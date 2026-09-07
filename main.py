@@ -151,7 +151,7 @@ async def chat_endpoint(request: ChatRequest):
         # 3. Get AI Response
         full_prompt = SYSTEM_PROMPT + "\n\nUser: " + request.message + "\nAssistant:"
         response = client.models.generate_content(
-            model="gemini-3.6-flash",
+            model="gemini-2.5-flash",
             contents=full_prompt
         )
         reply_text = response.text
