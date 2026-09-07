@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #0b0e14;
+  --color-ink-soft: #0f141d;
+  --color-ink-line: #1c2330;
+
+  --color-amber: #e8a33d;
+  --color-amber-soft: #f5c77d;
+  --color-cyan: #4fd8c9;
+  --color-cyan-soft: #8de6dc;
+
+  --color-text: #e7ecf3;
+  --color-muted: #8b94a3;
+  --color-faint: #5c6573;
+
+  --font-heading: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --animate-caret: caret 0.9s steps(1) infinite;
+
+  @keyframes caret {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-amber);
+    color: var(--color-ink);
+  }
+
+  .hero-photo-glow {
+    filter: drop-shadow(0 0 28px rgba(232, 163, 61, 0.18))
+            drop-shadow(0 0 56px rgba(79, 216, 201, 0.12));
+  }
+
+  .hero-photo-frame {
+    background: conic-gradient(
+      from 180deg,
+      var(--color-amber) 0%,
+      var(--color-cyan) 50%,
+      var(--color-amber) 100%
+    );
+  }
+
+  .hero-photo-inner {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
