@@ -1,5 +1,11 @@
 main.py
+app.py
 requirements.txt
 pyproject.toml
 uv.lock
 .venv/
+venv/
+__pycache__/
+*.pyc
+portfolio.db
+.env

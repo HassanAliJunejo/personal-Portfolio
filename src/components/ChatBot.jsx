@@ -56,7 +56,7 @@ export default function ChatBot() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/history/${sessionId}`)
+        const res = await fetch(`/api/history/${sessionId}`)
         if (res.ok) {
           const history = await res.json()
           if (history.length > 0) {
@@ -76,7 +76,7 @@ export default function ChatBot() {
 
   const getAIResponse = async (userText) => {
     try {
-      const res = await fetch('http://localhost:8000/api/chat', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userText, session_id: sessionId })
