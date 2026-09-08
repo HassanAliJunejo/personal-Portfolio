@@ -1,11 +1,10 @@
 ---
-title: Personal Portfolio
+title: Personal-Portfolio
 emoji: 🚀
 colorFrom: blue
 colorTo: indigo
-sdk: docker
+sdk: gradio
+sdk_version: 4.38.0
 app_file: main.py
 pinned: false
-license: mit
-short_description: Unified FastAPI Backend and Gradio Interface
 ---
