@@ -1,3 +1,5 @@
+import spaces
+import torch
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -8,7 +10,6 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 import gradio as gr
-import spaces
 
 load_dotenv()
 
@@ -115,7 +116,17 @@ def is_portfolio_related(message: str) -> bool:
 
 @spaces.GPU
 def dummy_gpu_task():
-    return "GPU initialized"
+    if torch.cuda.is_available():
+        _ = torch.ones((1, 1), device="cuda")
+        return "GPU Active"
+    return "No CUDA"
+
+@app.on_event("startup")
+def startup_event():
+    try:
+        dummy_gpu_task()
+    except Exception as e:
+        print(f"ZeroGPU Startup Check: {e}")
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
