@@ -121,12 +121,12 @@ def dummy_gpu_task():
         return "GPU Active"
     return "No CUDA"
 
-@app.on_event("startup")
-def startup_event():
-    try:
-        dummy_gpu_task()
-    except Exception as e:
-        print(f"ZeroGPU Startup Check: {e}")
+# Run synchronously at module import time so ZeroGPU daemon detects it instantly
+try:
+    _ = dummy_gpu_task()
+    print("ZeroGPU initial scan pass.")
+except Exception as e:
+    print(f"ZeroGPU init notice: {e}")
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
