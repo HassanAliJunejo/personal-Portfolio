@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "node",
+      "args": [
+        "path/to/server.js"
+      ]
+    },
+    "hf-server": {
+      "url": "https://your-mcp-server-url.com/mcp",
+      "type": "http"
+    }
+  }
+}
