@@ -7,6 +7,7 @@ import datetime
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
+import gradio as gr
 
 load_dotenv()
 
@@ -185,6 +186,9 @@ async def get_history(session_id: str):
         if row[0] else {"from": "bot", "text": row[1], "time": row[2]}
         for row in rows
     ]
+
+demo = gr.Interface(fn=lambda: "Backend is running", inputs=[], outputs="text")
+app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
     import uvicorn
