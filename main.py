@@ -45,9 +45,14 @@ def init_db():
 
 init_db()
 
-# AI Configuration
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
+# AI Configuration – strip quotes/spaces that cause OAuth fallback
+raw_key = os.getenv("GEMINI_API_KEY", "")
+api_key = raw_key.strip().strip('"').strip("'")
+
+if not api_key:
+    print("WARNING: GEMINI_API_KEY is missing or empty.")
+
+genai.configure(api_key=api_key)
 
 SYSTEM_PROMPT = """
 You are the official AI Assistant for Hassan Ali Junejo's portfolio. 
@@ -77,6 +82,8 @@ Guidelines:
 - If a user asks anything outside of Hassan's professional portfolio/background, politely decline with: 
   "I am specifically designed to answer questions about Hassan's portfolio, projects, and skills. Feel free to ask about his work!"
 """
+
+model = genai.GenerativeModel("gemini-1.5-flash", system_instruction=SYSTEM_PROMPT)
 
 # Schemas
 class ChatRequest(BaseModel):
@@ -168,12 +175,15 @@ async def chat_endpoint(request: ChatRequest):
             history_parts.append({"role": "model", "parts": [{"text": bot_msg}]})
         
         # 3. Get AI Response
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            system_instruction=SYSTEM_PROMPT
-        )
-        response = model.generate_content(request.message)
-        reply_text = response.text
+        if not api_key:
+            raise HTTPException(status_code=500, detail="GEMINI_API_KEY is missing on Hugging Face Space")
+        
+        try:
+            response = model.generate_content(request.message)
+            reply_text = response.text
+        except Exception as gen_error:
+            print(f"Gemini API Error: {gen_error}")
+            raise HTTPException(status_code=500, detail=f"AI generation failed: {str(gen_error)}")
         
         # 4. Save to SQLite
         cursor.execute(
