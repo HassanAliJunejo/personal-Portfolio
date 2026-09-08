@@ -83,7 +83,7 @@ Guidelines:
   "I am specifically designed to answer questions about Hassan's portfolio, projects, and skills. Feel free to ask about his work!"
 """
 
-model = genai.GenerativeModel("gemini-1.5-flash", system_instruction=SYSTEM_PROMPT)
+model = genai.GenerativeModel("gemini-3.6-flash", system_instruction=SYSTEM_PROMPT)
 
 # Schemas
 class ChatRequest(BaseModel):
