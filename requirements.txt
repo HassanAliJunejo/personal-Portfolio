@@ -1,4 +1,4 @@
 fastapi>=0.110.0,<0.116.0
 pydantic>=2.7.0,<2.10.0
-google-genai==0.2.0
+google-generativeai
 python-dotenv>=1.0.0

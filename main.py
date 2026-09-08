@@ -5,7 +5,7 @@ from typing import List, Optional
 import sqlite3
 import datetime
 import os
-from google import genai
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -44,7 +44,7 @@ init_db()
 
 # AI Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
 
 SYSTEM_PROMPT = """
 You are the official AI Assistant for Hassan Ali Junejo's portfolio. 
@@ -149,11 +149,11 @@ async def chat_endpoint(request: ChatRequest):
             history_parts.append({"role": "model", "parts": [{"text": bot_msg}]})
         
         # 3. Get AI Response
-        full_prompt = SYSTEM_PROMPT + "\n\nUser: " + request.message + "\nAssistant:"
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=full_prompt
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            system_instruction=SYSTEM_PROMPT
         )
+        response = model.generate_content(request.message)
         reply_text = response.text
         
         # 4. Save to SQLite
