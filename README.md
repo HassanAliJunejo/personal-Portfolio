@@ -1,14 +1,11 @@
 ---
-title: Portfolio Backend
+title: Personal Portfolio
 emoji: 🚀
 colorFrom: blue
 colorTo: indigo
-sdk: gradio
-sdk_version: 4.44.1
-python_version: 3.10
+sdk: docker
 app_file: main.py
 pinned: false
+license: mit
+short_description: Unified FastAPI Backend and Gradio Interface
 ---
-
-# Portfolio FastAPI Backend
-Hosted on Hugging Face Spaces using Gradio Mount SDK.
