@@ -8,6 +8,7 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 import gradio as gr
+import spaces
 
 load_dotenv()
 
@@ -112,6 +113,10 @@ def is_portfolio_related(message: str) -> bool:
     # Default: assume it's related and let the model decide
     return True
 
+@spaces.GPU
+def dummy_gpu_task():
+    return "GPU initialized"
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     try:
@@ -140,8 +145,10 @@ async def chat_endpoint(request: ChatRequest):
         
         # Build conversation history for Gemini
         # Start with system prompt
-        history_parts = [{"role": "user", "parts": [{"text": SYSTEM_PROMPT}]},
-                        {"role": "model", "parts": [{"text": "Understood. I am Hassan's AI Assistant."}]}]
+        history_parts = [
+                    {"role": "user", "parts": [{"text": SYSTEM_PROMPT}]},
+                    {"role": "model", "parts": [{"text": "Understood. I am Hassan's AI Assistant."}]}
+                ]
         
         # Add recent history (last 6 exchanges = 12 entries, but we'll do pairs)
         for row in rows:
