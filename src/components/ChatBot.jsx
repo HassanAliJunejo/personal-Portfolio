@@ -84,14 +84,26 @@ export default function ChatBot() {
 
       if (!res.ok) {
         const errData = await res.json()
-        throw new Error(errData.detail || "Backend error")
+        const detail =
+          typeof errData.detail === 'string'
+            ? errData.detail
+            : typeof errData.error === 'string'
+              ? errData.error
+              : JSON.stringify(errData.detail || errData.error || errData)
+        throw new Error(detail || 'Backend error')
       }
 
       const data = await res.json()
-      return data.reply
+      return typeof data.reply === 'string' ? data.reply : JSON.stringify(data.reply)
     } catch (error) {
-      console.error("[ChatBot] Backend Failure:", error)
-      return `Error: ${error.message || "Could not connect to backend. Make sure main.py is running."}`
+      console.error('[ChatBot] Backend Failure:', error)
+      const message =
+        typeof error?.message === 'string'
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : 'An unexpected error occurred'
+      return `Error: ${message}`
     }
   }
 

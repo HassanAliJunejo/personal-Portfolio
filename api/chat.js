@@ -21,9 +21,18 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorText = await response.text()
+      let detail = errorText
+      if (contentType.includes('application/json')) {
+        try {
+          const parsed = JSON.parse(errorText)
+          detail = parsed.detail || parsed.message || parsed.error || JSON.stringify(parsed)
+        } catch {
+          detail = errorText
+        }
+      }
       return res.status(response.status).json({
         error: 'Backend error',
-        detail: contentType.includes('application/json') ? JSON.parse(errorText) : errorText,
+        detail: String(detail),
       })
     }
 
