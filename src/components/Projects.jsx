@@ -12,7 +12,7 @@ const PROJECTS = {
       impact:
         'Successfully delivered to client; boosted online student inquiries and digitized course admissions.',
       demo: 'https://elegant-education-6yza.vercel.app/',
-      image: '/elegant education center.png',
+      image: '/elegant-education-center.png',
     },
     {
       title: 'TypeScript Quiz System',
@@ -20,7 +20,7 @@ const PROJECTS = {
       tags: ['TypeScript', 'React', 'Tailwind CSS', 'Vercel'],
       impact: 'Provides a streamlined platform for conducting TypeScript assessments with automated grading and admin management.',
       demo: 'https://typescript-test-d4r9.vercel.app/',
-      image: '/typescript quiz.png',
+      image: '/typescript-quiz.png',
     },
     {
       title: 'Todo full stack app',
@@ -30,7 +30,7 @@ const PROJECTS = {
       impact: 'Streamlined task management and improved user productivity.',
       github: 'https://github.com/hassanalijunejo/todo-full-stack',
       demo: 'https://todo-full-stack-orcin.vercel.app/',
-      image: '/todo full stack app.png',
+      image: '/todo-full-stack-app.png',
     },
   ],
   ai: [
@@ -42,7 +42,7 @@ const PROJECTS = {
       impact: 'Streamlined task management and improved user productivity.',
       github: '[REPLACE: https://github.com/hassanalijunejo/repo]',
       demo: 'https://todo-chatbot-sr16.vercel.app/login',
-      image: '/Todo Chatbot Full stack app.png',
+      image: '/todo-chatbot-full-stack-app.png',
     },
     {
       title: 'NovaChat AI Assistant',
@@ -52,7 +52,7 @@ const PROJECTS = {
       impact: 'Reduced query response time by 80% and enabled 24/7 automated support.',
       github: '[REPLACE: https://github.com/hassanalijunejo/repo]',
       demo: 'https://ai-chatbot-abjt.vercel.app/login',
-      image: '/Nova Chatbot.png',
+      image: '/nova-chatbot.png',
     },
     {
       title: 'Physical AI & Humanoid Robotics',
@@ -62,7 +62,7 @@ const PROJECTS = {
       impact: 'Digitized AI robotics course modules and built an integrated interactive RAG knowledge base.',
       github: 'https://github.com/hassanalijunejo/rag-chatbot',
       demo: 'https://rag-chatbot-ui-sepia.vercel.app/',
-      image: '/Physical AI & Humanoid Robotics.png',
+      image: '/physical-ai-humanoid-robotics.png',
     },
   ],
 }

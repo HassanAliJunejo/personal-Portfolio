@@ -56,7 +56,7 @@ export default function ChatBot() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/history/${sessionId}`)
+        const res = await fetch(`/api/history/${sessionId}`)
         if (res.ok) {
           const history = await res.json()
           if (history.length > 0) {
@@ -76,7 +76,7 @@ export default function ChatBot() {
 
   const getAIResponse = async (userText) => {
     try {
-      const res = await fetch('http://localhost:8000/api/chat', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userText, session_id: sessionId })
@@ -84,14 +84,26 @@ export default function ChatBot() {
 
       if (!res.ok) {
         const errData = await res.json()
-        throw new Error(errData.detail || "Backend error")
+        const detail =
+          typeof errData.detail === 'string'
+            ? errData.detail
+            : typeof errData.error === 'string'
+              ? errData.error
+              : JSON.stringify(errData.detail || errData.error || errData)
+        throw new Error(detail || 'Backend error')
       }
 
       const data = await res.json()
-      return data.reply
+      return typeof data.reply === 'string' ? data.reply : JSON.stringify(data.reply)
     } catch (error) {
-      console.error("[ChatBot] Backend Failure:", error)
-      return `Error: ${error.message || "Could not connect to backend. Make sure main.py is running."}`
+      console.error('[ChatBot] Backend Failure:', error)
+      const message =
+        typeof error?.message === 'string'
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : 'An unexpected error occurred'
+      return `Error: ${message}`
     }
   }
 
