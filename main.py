@@ -44,6 +44,7 @@ init_db()
 
 # AI Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 SYSTEM_PROMPT = """
@@ -151,7 +152,7 @@ async def chat_endpoint(request: ChatRequest):
         # 3. Get AI Response
         full_prompt = SYSTEM_PROMPT + "\n\nUser: " + request.message + "\nAssistant:"
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=GEMINI_MODEL,
             contents=full_prompt
         )
         reply_text = response.text
