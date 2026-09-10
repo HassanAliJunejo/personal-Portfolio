@@ -3,10 +3,11 @@ title: Portfolio Backend
 emoji: 🚀
 colorFrom: blue
 colorTo: indigo
-sdk: docker
-app_file: Dockerfile
+sdk: gradio
+sdk_version: "5.50.0"
+app_file: app.py
 pinned: false
 ---
 
 # Portfolio FastAPI Backend
-Hosted on Hugging Face Spaces using a custom Docker image running Uvicorn.
+Hosted on Hugging Face Spaces with FastAPI mounted inside a Gradio app.
