@@ -42,14 +42,14 @@ def init_db():
 
 init_db()
 
-# AI Configuration – strip quotes/spaces that cause OAuth fallback
+# AI Client Initialization
 raw_key = os.getenv("GEMINI_API_KEY", "")
 api_key = raw_key.strip().strip('"').strip("'")
 
 if not api_key:
     print("WARNING: GEMINI_API_KEY is missing or empty.")
 
-genai.configure(api_key=api_key)
+client = genai.Client(api_key=api_key)
 
 SYSTEM_PROMPT = """
 You are the official AI Assistant for Hassan Ali Junejo's portfolio. 
@@ -79,7 +79,6 @@ Guidelines:
 - If a user asks anything outside of Hassan's professional portfolio/background, politely decline with: 
   "I am specifically designed to answer questions about Hassan's portfolio, projects, and skills. Feel free to ask about his work!"
 """
-model = genai.GenerativeModel("gemini-2.5-flash")
 
 # Schemas
 class ChatRequest(BaseModel):
@@ -108,28 +107,11 @@ portfolio_keywords = [
 def is_portfolio_related(message: str) -> bool:
     """Check if the message is related to Hassan's portfolio."""
     lower = message.lower()
-    # If it contains portfolio keywords, it's related
     if any(kw in lower for kw in portfolio_keywords):
         return True
-    # If it contains only forbidden keywords, it's not related
     if any(kw in lower for kw in FORBIDDEN_KEYWORDS):
         return False
-    # Default: assume it's related and let the model decide
     return True
-
-@spaces.GPU
-def dummy_gpu_task():
-    if torch.cuda.is_available():
-        _ = torch.ones((1, 1), device="cuda")
-        return "GPU Active"
-    return "No CUDA"
-
-# Run synchronously at module import time so ZeroGPU daemon detects it instantly
-try:
-    _ = dummy_gpu_task()
-    print("ZeroGPU initial scan pass.")
-except Exception as e:
-    print(f"ZeroGPU init notice: {e}")
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
@@ -137,7 +119,6 @@ async def chat_endpoint(request: ChatRequest):
         # 1. Guardrail check
         if not is_portfolio_related(request.message):
             reply = "I am specifically designed to answer questions about Hassan's portfolio, projects, and skills. Feel free to ask about his work!"
-            # Save to SQLite
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute(
@@ -156,32 +137,39 @@ async def chat_endpoint(request: ChatRequest):
             (request.session_id,)
         )
         rows = cursor.fetchall()
+        conn.close()
         
-        # Build conversation history for Gemini
-        # Start with system prompt
-        history_parts = [
-                    {"role": "user", "parts": [{"text": SYSTEM_PROMPT}]},
-                    {"role": "model", "parts": [{"text": "Understood. I am Hassan's AI Assistant."}]}
-                ]
+        # Build clean conversation transcript
+        history_lines = []
+        for user_msg, bot_msg in rows:
+            if user_msg:
+                history_lines.append(f"User: {user_msg}")
+            if bot_msg:
+                history_lines.append(f"Assistant: {bot_msg}")
         
-        # Add recent history (last 6 exchanges = 12 entries, but we'll do pairs)
-        for row in rows:
-            user_msg, bot_msg = row
-            history_parts.append({"role": "user", "parts": [{"text": user_msg}]})
-            history_parts.append({"role": "model", "parts": [{"text": bot_msg}]})
+        history_lines.append(f"User: {request.message}")
+        history_lines.append("Assistant:")
         
-        # 3. Get AI Response
+        full_transcript = "\n".join(history_lines)
+        
+        # 3. Get AI Response via official Client SDK
         if not api_key:
             raise HTTPException(status_code=500, detail="GEMINI_API_KEY is missing on Hugging Face Space")
         
         try:
-            response = model.generate_content(request.message)
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=full_transcript,
+                config={"system_instruction": SYSTEM_PROMPT}
+            )
             reply_text = response.text
         except Exception as gen_error:
             print(f"Gemini API Error: {gen_error}")
             raise HTTPException(status_code=500, detail=f"AI generation failed: {str(gen_error)}")
         
         # 4. Save to SQLite
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO chats (session_id, user_message, bot_response) VALUES (?, ?, ?)",
             (request.session_id, request.message, reply_text)
@@ -205,14 +193,15 @@ async def get_history(session_id: str):
     rows = cursor.fetchall()
     conn.close()
     
-    return [
-        {"from": "user", "text": row[0], "time": row[2]}
-        if row[0] else {"from": "bot", "text": row[1], "time": row[2]}
-        for row in rows
-    ]
-
-demo = gr.Interface(fn=lambda: "Backend is running", inputs=[], outputs="text")
-app = gr.mount_gradio_app(app, demo, path="/")
+    formatted_history = []
+    for row in rows:
+        user_msg, bot_msg, created_at = row
+        if user_msg:
+            formatted_history.append({"from": "user", "text": user_msg, "time": created_at})
+        if bot_msg:
+            formatted_history.append({"from": "bot", "text": bot_msg, "time": created_at})
+            
+    return formatted_history
 
 if __name__ == "__main__":
     import uvicorn
