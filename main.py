@@ -1,9 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
 import sqlite3
-import datetime
 import os
 from google import genai
 from dotenv import load_dotenv
@@ -12,22 +10,24 @@ load_dotenv()
 
 app = FastAPI()
 
-# Enable CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
-    allow_credentials=True,
+    allow_origins=["http://localhost:5173"],
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Database Setup
+@app.get("/")
+async def root():
+    return {"status": "API is running"}
+
 DB_PATH = "portfolio.db"
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    # Table for chat history
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS chats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,10 +42,14 @@ def init_db():
 
 init_db()
 
-# AI Configuration
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-client = genai.Client(api_key=GEMINI_API_KEY)
+# AI Configuration – strip quotes/spaces that cause OAuth fallback
+raw_key = os.getenv("GEMINI_API_KEY", "")
+api_key = raw_key.strip().strip('"').strip("'")
+
+if not api_key:
+    print("WARNING: GEMINI_API_KEY is missing or empty.")
+
+genai.configure(api_key=api_key)
 
 SYSTEM_PROMPT = """
 You are the official AI Assistant for Hassan Ali Junejo's portfolio. 
@@ -75,6 +79,7 @@ Guidelines:
 - If a user asks anything outside of Hassan's professional portfolio/background, politely decline with: 
   "I am specifically designed to answer questions about Hassan's portfolio, projects, and skills. Feel free to ask about his work!"
 """
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 # Schemas
 class ChatRequest(BaseModel):
@@ -112,6 +117,20 @@ def is_portfolio_related(message: str) -> bool:
     # Default: assume it's related and let the model decide
     return True
 
+@spaces.GPU
+def dummy_gpu_task():
+    if torch.cuda.is_available():
+        _ = torch.ones((1, 1), device="cuda")
+        return "GPU Active"
+    return "No CUDA"
+
+# Run synchronously at module import time so ZeroGPU daemon detects it instantly
+try:
+    _ = dummy_gpu_task()
+    print("ZeroGPU initial scan pass.")
+except Exception as e:
+    print(f"ZeroGPU init notice: {e}")
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     try:
@@ -140,8 +159,10 @@ async def chat_endpoint(request: ChatRequest):
         
         # Build conversation history for Gemini
         # Start with system prompt
-        history_parts = [{"role": "user", "parts": [{"text": SYSTEM_PROMPT}]},
-                        {"role": "model", "parts": [{"text": "Understood. I am Hassan's AI Assistant."}]}]
+        history_parts = [
+                    {"role": "user", "parts": [{"text": SYSTEM_PROMPT}]},
+                    {"role": "model", "parts": [{"text": "Understood. I am Hassan's AI Assistant."}]}
+                ]
         
         # Add recent history (last 6 exchanges = 12 entries, but we'll do pairs)
         for row in rows:
@@ -150,12 +171,15 @@ async def chat_endpoint(request: ChatRequest):
             history_parts.append({"role": "model", "parts": [{"text": bot_msg}]})
         
         # 3. Get AI Response
-        full_prompt = SYSTEM_PROMPT + "\n\nUser: " + request.message + "\nAssistant:"
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=full_prompt
-        )
-        reply_text = response.text
+        if not api_key:
+            raise HTTPException(status_code=500, detail="GEMINI_API_KEY is missing on Hugging Face Space")
+        
+        try:
+            response = model.generate_content(request.message)
+            reply_text = response.text
+        except Exception as gen_error:
+            print(f"Gemini API Error: {gen_error}")
+            raise HTTPException(status_code=500, detail=f"AI generation failed: {str(gen_error)}")
         
         # 4. Save to SQLite
         cursor.execute(
@@ -186,6 +210,9 @@ async def get_history(session_id: str):
         if row[0] else {"from": "bot", "text": row[1], "time": row[2]}
         for row in rows
     ]
+
+demo = gr.Interface(fn=lambda: "Backend is running", inputs=[], outputs="text")
+app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
     import uvicorn

@@ -3,4 +3,3 @@ uvicorn
 pydantic
 google-genai
 python-dotenv
-gradio
