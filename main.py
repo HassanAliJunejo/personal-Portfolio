@@ -42,7 +42,7 @@ def init_db():
 
 init_db()
 
-# AI Client Initialization
+# AI Client Setup
 raw_key = os.getenv("GEMINI_API_KEY", "")
 api_key = raw_key.strip().strip('"').strip("'")
 
@@ -80,7 +80,6 @@ Guidelines:
   "I am specifically designed to answer questions about Hassan's portfolio, projects, and skills. Feel free to ask about his work!"
 """
 
-# Schemas
 class ChatRequest(BaseModel):
     message: str
     session_id: str
@@ -88,7 +87,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
-# Guardrail keywords
 FORBIDDEN_KEYWORDS = [
     'what is', 'who is', 'news', 'weather', 'math', 'science',
     'history', 'geography', 'programming help', 'code help',
@@ -105,7 +103,6 @@ portfolio_keywords = [
 ]
 
 def is_portfolio_related(message: str) -> bool:
-    """Check if the message is related to Hassan's portfolio."""
     lower = message.lower()
     if any(kw in lower for kw in portfolio_keywords):
         return True
@@ -116,7 +113,7 @@ def is_portfolio_related(message: str) -> bool:
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     try:
-        # 1. Guardrail check
+        # Guardrail check
         if not is_portfolio_related(request.message):
             reply = "I am specifically designed to answer questions about Hassan's portfolio, projects, and skills. Feel free to ask about his work!"
             conn = sqlite3.connect(DB_PATH)
@@ -129,7 +126,7 @@ async def chat_endpoint(request: ChatRequest):
             conn.close()
             return ChatResponse(reply=reply)
         
-        # 2. Get history from SQLite
+        # SQLite history lookup
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
@@ -139,7 +136,6 @@ async def chat_endpoint(request: ChatRequest):
         rows = cursor.fetchall()
         conn.close()
         
-        # Build clean conversation transcript
         history_lines = []
         for user_msg, bot_msg in rows:
             if user_msg:
@@ -152,13 +148,13 @@ async def chat_endpoint(request: ChatRequest):
         
         full_transcript = "\n".join(history_lines)
         
-        # 3. Get AI Response via official Client SDK
         if not api_key:
             raise HTTPException(status_code=500, detail="GEMINI_API_KEY is missing on Hugging Face Space")
         
         try:
+            # Updated to recommended model gemini-3.6-flash
             response = client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-3.6-flash",
                 contents=full_transcript,
                 config={"system_instruction": SYSTEM_PROMPT}
             )
@@ -167,7 +163,7 @@ async def chat_endpoint(request: ChatRequest):
             print(f"Gemini API Error: {gen_error}")
             raise HTTPException(status_code=500, detail=f"AI generation failed: {str(gen_error)}")
         
-        # 4. Save to SQLite
+        # Save response
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
