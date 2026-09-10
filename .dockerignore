@@ -1,0 +1,9 @@
+.git
+.env
+.gemini
+__pycache__
+venv
+node_modules
+dist
+portfolio.db
+public

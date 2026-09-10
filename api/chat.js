@@ -1,7 +1,7 @@
 const BACKEND_URL = (
   process.env.HF_SPACE_URL ||
   process.env.NEXT_PUBLIC_HF_SPACE_URL ||
-  'http://localhost:8000'
+  'http://localhost:7860'
 ).replace(/\/$/, '')
 
 export default async function handler(req, res) {

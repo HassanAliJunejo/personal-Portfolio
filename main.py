@@ -42,17 +42,10 @@ def init_db():
 
 init_db()
 
-# AI Client Setup
-raw_key = os.getenv("GEMINI_API_KEY", "")
-api_key = raw_key.strip().strip('"').strip("'")
-
-if not api_key:
-    print("WARNING: GEMINI_API_KEY is missing or empty.")
-
-client = genai.Client(api_key=api_key)
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 SYSTEM_PROMPT = """
-You are the official AI Assistant for Hassan Ali Junejo's portfolio. 
+You are the official AI Assistant for Hassan Ali Junejo's portfolio.
 Your goal is to represent Hassan professionally and answer questions about his skills, projects, and experience.
 
 Hassan Ali Junejo Profile:
@@ -71,12 +64,12 @@ Hassan Ali Junejo Profile:
 
 Guidelines:
 - Be concise, professional, and friendly.
-- Use a developer-like tone (hint: use code snippets or technical terms when appropriate).
+- Use a developer-like tone when appropriate.
 - If you don't know something specific about Hassan, politely suggest contacting him directly.
 - Keep responses short (max 2-3 sentences unless asked for detail).
 - Always speak as if you are Hassan's assistant, not Hassan himself.
 - ONLY answer questions about Hassan's portfolio, projects, skills, and background.
-- If a user asks anything outside of Hassan's professional portfolio/background, politely decline with: 
+- If a user asks anything outside of Hassan's professional portfolio/background, politely decline with:
   "I am specifically designed to answer questions about Hassan's portfolio, projects, and skills. Feel free to ask about his work!"
 """
 
@@ -88,91 +81,82 @@ class ChatResponse(BaseModel):
     reply: str
 
 FORBIDDEN_KEYWORDS = [
-    'what is', 'who is', 'news', 'weather', 'math', 'science',
-    'history', 'geography', 'programming help', 'code help',
-    'explain', 'calculate', 'translate', 'python project',
-    'how to make', 'website', 'app tutorial'
+    "what is", "who is", "news", "weather", "math", "science",
+    "history", "geography", "programming help", "code help",
+    "explain", "calculate", "translate", "python project",
+    "how to make", "website", "app tutorial",
 ]
 
 portfolio_keywords = [
-    'hassan', 'portfolio', 'skills', 'projects', 'elegant education',
-    'novachat', 'physical ai', 'humanoid', 'robotics', 'giaic',
-    'shed hospital', 'ai developer', 'full stack', 'next js',
-    'fastapi', 'typescript', 'python', 'docker', 'contact',
-    'experience', 'background', 'role', 'expertise'
+    "hassan", "portfolio", "skills", "projects", "elegant education",
+    "novachat", "physical ai", "humanoid", "robotics", "giaic",
+    "shed hospital", "ai developer", "full stack", "next js",
+    "fastapi", "typescript", "python", "docker", "contact",
+    "experience", "background", "role", "expertise",
 ]
 
 def is_portfolio_related(message: str) -> bool:
     lower = message.lower()
-    if any(kw in lower for kw in portfolio_keywords):
+
+    if any(keyword in lower for keyword in portfolio_keywords):
         return True
-    if any(kw in lower for kw in FORBIDDEN_KEYWORDS):
+
+    if any(keyword in lower for keyword in FORBIDDEN_KEYWORDS):
         return False
+
     return True
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     try:
-        # Guardrail check
         if not is_portfolio_related(request.message):
-            reply = "I am specifically designed to answer questions about Hassan's portfolio, projects, and skills. Feel free to ask about his work!"
+            reply = (
+                "I am specifically designed to answer questions about Hassan's "
+                "portfolio, projects, and skills. Feel free to ask about his work!"
+            )
+
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO chats (session_id, user_message, bot_response) VALUES (?, ?, ?)",
-                (request.session_id, request.message, reply)
+                (request.session_id, request.message, reply),
             )
             conn.commit()
             conn.close()
+
             return ChatResponse(reply=reply)
-        
-        # SQLite history lookup
+
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT user_message, bot_response FROM chats WHERE session_id = ? ORDER BY id ASC LIMIT 10",
-            (request.session_id,)
+            "SELECT user_message, bot_response FROM chats "
+            "WHERE session_id = ? ORDER BY id ASC LIMIT 10",
+            (request.session_id,),
         )
         rows = cursor.fetchall()
-        conn.close()
-        
-        history_lines = []
-        for user_msg, bot_msg in rows:
-            if user_msg:
-                history_lines.append(f"User: {user_msg}")
-            if bot_msg:
-                history_lines.append(f"Assistant: {bot_msg}")
-        
-        history_lines.append(f"User: {request.message}")
-        history_lines.append("Assistant:")
-        
-        full_transcript = "\n".join(history_lines)
-        
-        if not api_key:
-            raise HTTPException(status_code=500, detail="GEMINI_API_KEY is missing on Hugging Face Space")
-        
-        try:
-            # Updated to recommended model gemini-3.6-flash
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=full_transcript,
-                config={"system_instruction": SYSTEM_PROMPT}
-            )
-            reply_text = response.text
-        except Exception as gen_error:
-            print(f"Gemini API Error: {gen_error}")
-            raise HTTPException(status_code=500, detail=f"AI generation failed: {str(gen_error)}")
-        
-        # Save response
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+
+        conversation = "\n\n".join(
+            f"User: {user_message}\nAssistant: {bot_response}"
+            for user_message, bot_response in rows
+        )
+        if conversation:
+            conversation += "\n\n"
+        conversation += f"User: {request.message}\nAssistant:"
+
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=conversation,
+            config={"system_instruction": SYSTEM_PROMPT},
+        )
+        reply_text = response.text
+
         cursor.execute(
             "INSERT INTO chats (session_id, user_message, bot_response) VALUES (?, ?, ?)",
-            (request.session_id, request.message, reply_text)
+            (request.session_id, request.message, reply_text),
         )
         conn.commit()
         conn.close()
-        
+
         return ChatResponse(reply=reply_text)
     except Exception as e:
         print(f"Backend Error: {e}")
@@ -183,22 +167,21 @@ async def get_history(session_id: str):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT user_message, bot_response, created_at FROM chats WHERE session_id = ? ORDER BY id ASC",
-        (session_id,)
+        "SELECT user_message, bot_response, created_at FROM chats "
+        "WHERE session_id = ? ORDER BY id ASC",
+        (session_id,),
     )
     rows = cursor.fetchall()
     conn.close()
-    
-    formatted_history = []
-    for row in rows:
-        user_msg, bot_msg, created_at = row
-        if user_msg:
-            formatted_history.append({"from": "user", "text": user_msg, "time": created_at})
-        if bot_msg:
-            formatted_history.append({"from": "bot", "text": bot_msg, "time": created_at})
-            
-    return formatted_history
+
+    return [
+        {"from": "user", "text": row[0], "time": row[2]}
+        if row[0]
+        else {"from": "bot", "text": row[1], "time": row[2]}
+        for row in rows
+    ]
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=7860)
